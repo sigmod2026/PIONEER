@@ -315,9 +315,7 @@ void YCSB(DRAMManagerNUMA* dramManagerNUMA){
     YCSBTime.start();
     YCSBThreads.join_all();
     YCSBTime.end();
-    for (int i = 0; i < THREAD_NUMBER; ++i) {
-        YCSBThreads.create_thread(boost::bind(&insertALLShadow, dramManagerNUMA, i,YCSBTimer));
-    }
+
     YCSBThreads.join_all();
     double total = 0;
     double totalTime = 0;
@@ -416,11 +414,11 @@ void testDirectory() {
     insertTime.end();
     std::cout << "DataSetNumber:" << testNum + loadNum << " loadFactor:" <<1.000000 *  (testNum + loadNum) / nvmTest->nvmBlockManager->start / SEGMENT_DATA_NUMBER << std::endl;
     searchTime.start();
-//    for(int i = 0;i < testNum;i++){
-//        if(nvmTest->search(keyPointer[i],valuePointer[i],keys)){
-//            counter++;
-//        }
-//    }
+    for(int i = 0;i < testNum;i++){
+        if(nvmTest->search(keyPointer[i],valuePointer[i],keys)){
+            counter++;
+        }
+    }
     searchTime.end();
     for (int i = 0; i < testNum / n; ++i) {
         file << array[i] << "\n";
@@ -668,7 +666,7 @@ void computeLatency(uint32_t * list){
     vector<double> vec;
 
     for(int i = 0;i < testNum;i++){
-        if(list[i] > average * 2){
+        if(list[i] > average){
             vec.push_back(list[i]);
         }
     }
@@ -676,7 +674,7 @@ void computeLatency(uint32_t * list){
     cout << "average:" << average << endl;
     cout << "Array length: " << vec.size() << endl;
     sort(vec.begin(), vec.end(), greater<>());
-    cout << vec[0] << ", " << vec[2000] << ", "  << vec[20000] << ", "  << vec[200000] << ", "  << vec[2000000] << endl;
+    cout << vec[0] << ", " << vec[testNum / 100] << ", "  << vec[testNum / 1000] << ", "  << vec[testNum / 10000] << ", "  << vec[testNum / 100000] << endl;
 }
 void Latency(DRAMManagerNUMA* dramManagerNUMA){
     boost::thread_group insertThreads;
@@ -935,8 +933,45 @@ void cacheMonitor(){
     std::cout << "L2 Cache Misses: " << values2[1] - values1[1] << std::endl;
     std::cout << "L1 Cache Misses: " << values2[2] - values1[2] << std::endl;
 }
+void LoadFactor() {
+    boost::thread_group insertThreads;
+    printf("Begin readData\n");
+    for (int i = 0; i < INIT_THREAD_NUMBER; ++i) {
+        insertThreads.create_thread(boost::bind(&readDataSet,i));
+    }
+    insertThreads.join_all();
+    keyProcessForHierMulti(keys);
+    auto blockManager = static_cast<NVMBlockManager *>(Util::staticAllocatePMSpace("/pmem0/blockHashblockManager",sizeof(NVMBlockManager)));
+    auto allocDirectory = static_cast<DynamicDirectory *>(Util::staticAllocatePMSpace("/pmem0/blockHashdynamicDirectory",sizeof(DynamicDirectory)));
 
-int main() {
+    nsTimer insertTime,searchTime;
+
+    auto * nvmTest = new NVMDirectory(blockManager, allocDirectory);
+    nvmTest->initDepth(8);
+    int n = 10000;
+    double array[testNum/n];
+    std::ofstream file("output.csv");
+    if (!file.is_open()) {
+        std::cerr << "can not open file" << std::endl;
+        exit(2);
+    }
+
+//    auto * nvmTest = new DRAMDirectory();
+    int counter = 0;
+    std::cout << "begin operation" << std::endl;
+    insertTime.start();
+    int file_counter = 0;
+    for(int i = 0;i < 1000000;i++){
+        if(i % n == 0 && i != 0){
+            std::cout << "DataSetNumber:" << i << " loadFactor:" << 1.000000 * i / (nvmTest->nvmBlockManager->start * SEGMENT_DATA_NUMBER) << std::endl;
+            array[file_counter++] = 1.000000 *  i / (nvmTest->nvmBlockManager->start * SEGMENT_DATA_NUMBER);
+        }
+        nvmTest->insert(keyPointer[i],valuePointer[i],keys);
+    }
+    insertTime.end();
+    std::cout <<  " loadFactor:" <<1.000000 *  (1000000) / nvmTest->nvmBlockManager->start / SEGMENT_DATA_NUMBER << std::endl;
+}
+int main(int argc, char* argv[]) {
     boost::thread_group insertThreads;
     boost::barrier insertBarrier(THREAD_NUMBER);
 
@@ -970,7 +1005,10 @@ int main() {
     }
 
 #endif
-
+    if(strcmp(argv[1],"LoadFactor") == 0) {
+        LoadFactor();
+        return 0;
+    }
     printf("Begin readData\n");
     for (int i = 0; i < INIT_THREAD_NUMBER; ++i) {
         insertThreads.create_thread(boost::bind(&readDataSet,i));
@@ -980,22 +1018,27 @@ int main() {
     printf("End readData\n");
     initStructure(dramManagerNUMA,0,keys);
 
-//    testManager();
 
+//    testManager();
+    if(strcmp(argv[1],"basic") == 0){
+        InsertSearchUpdateDelete(dramManagerNUMA);
+    }else if(strcmp(argv[1],"latency") == 0){
+        Latency(dramManagerNUMA);
+        LatencyCompute();
+    }else if(strcmp(argv[1],"YCSB") == 0){
+        if(THREAD_NUMBER -1){
+            YCSB(dramManagerNUMA);
+        }else{
+            YCSBSingleThread(dramManagerNUMA);
+        }
+    }
 //    cacheMonitor();
 //    testVariableKey(dramManagerNUMA);
 //    testDirectory();
 //    LatencyInsert(dramManagerNUMA);
-//    Latency(dramManagerNUMA);
-//    LatencyCompute();
-//    runAndLoadData(dramManagerNUMA);
 
-//    InsertSearchUpdateDelete(dramManagerNUMA);
-    insertAndSearch(dramManagerNUMA);
-//    if(THREAD_NUMBER -1){
-//        YCSB(dramManagerNUMA);
-//    }else{
-//        YCSBSingleThread(dramManagerNUMA);
-//    }
+//    runAndLoadData(dramManagerNUMA);
+//    insertAndSearch(dramManagerNUMA);
+
     return 0;
 }

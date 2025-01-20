@@ -915,6 +915,11 @@ public:
         nvmDirectory[MSBs]->initDepthByDir(dramDirectory[MSBs]->globalDepth,dramDirectory[MSBs]->bucketPointer);
         for(int j = 0;j < 1 << dramDirectory[MSBs]->globalDepth;j += (1 << (dramDirectory[MSBs]->globalDepth - dramDirectory[MSBs]->bucketPointer[j]->localDepth))){
             memcpy(nvmDirectory[MSBs]->bucketPointer[j],dramDirectory[MSBs]->bucketPointer[j],sizeof(NVMBucket));
+#ifndef eADR
+            clwb((char*)nvmDirectory[MSBs]->bucketPointer[j],sizeof(NVMBucket));
+#else
+            mfence();
+#endif
         }
     }
     void persistVariableKey(uint64_t MSBs) {

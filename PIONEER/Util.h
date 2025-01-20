@@ -27,8 +27,8 @@ static const uint64_t kFNVPrime64 = 1099511628211;
 #define INIT_THREAD_NUMBER 32
 #define MAX_LENGTH 8
 #define SNAPSHOT
-#define loadNum 00000000
-#define testNum 200000000
+#define loadNum 0000000
+#define testNum 10000000
 #define FREE_BLOCK (1 << 22)
 #define STORE 15
 #define GENERATE_MSB 24
@@ -44,13 +44,15 @@ static const uint64_t kFNVPrime64 = 1099511628211;
 #define UM 0xFFFFFFFF80000000ULL /* Most significant 33 bits */
 #define LM 0x7FFFFFFFULL /* Least significant 31 bits */
 #define SEGMENT_DATA_NUMBER (SEGMENT_CAPACITY * BUCKET_CAPACITY + STORE)
-#define LOAD_DATA_PATH "/md0/ycsb200M/ycsb_load_workloada"
-#define RUN_DATA_PATH "/md0/ycsb200M/ycsb_run_workloada"
+//#define LOAD_DATA_PATH "/md0/ycsb200M/ycsb_load_workloada"
+//#define RUN_DATA_PATH "/md0/ycsb200M/ycsb_run_workloada"
+#define LOAD_DATA_PATH "../ycsb_load_workloada"
+#define RUN_DATA_PATH "../ycsb_run_workloada"
 #define MASK ((0xFFFFFFFF << PERSIST_DEPTH) & 0xFFFFFFFF)
 #define ALLOC_SIZE ((size_t)4<<33)
 
-//#define DUPLICATE
-//#define Binding_threads
+#define DUPLICATE
+#define Binding_threads
 //#define RECOVER
 enum { OP_INSERT, OP_READ, OP_DELETE, OP_UPDATE };
 using namespace std;
